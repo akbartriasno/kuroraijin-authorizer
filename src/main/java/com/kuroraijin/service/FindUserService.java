@@ -6,6 +6,7 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import io.micronaut.context.annotation.Value;
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -28,6 +29,9 @@ public class FindUserService {
     private static final String USERS = "users";
     private static final String ROLES = "roles";
 
+    // Reuse MongoDB client across invocations
+    private MongoClient mongoClient;
+
     public FindUserService(
             @Value("${mongodb.uri}") String mongoUri,
             @Value("${aws.accountid}") String accountId,
@@ -40,10 +44,32 @@ public class FindUserService {
         }
     }
 
+    // Lazy initialization of MongoDB client
+    private MongoClient getMongoClient() {
+        if (mongoClient == null) {
+            synchronized (this) {
+                if (mongoClient == null) {
+                    LOG.info("Initializing MongoDB client");
+                    mongoClient = MongoClients.create(MONGO_URI);
+                }
+            }
+        }
+        return mongoClient;
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        if (mongoClient != null) {
+            LOG.info("Closing MongoDB client");
+            mongoClient.close();
+        }
+    }
+
     public Map<String, Object> findUser(String email) {
         LOG.info("Finding user: {}", email);
 
-        try (MongoClient client = MongoClients.create(MONGO_URI)) {
+        try {
+            MongoClient client = getMongoClient();
             MongoDatabase db = client.getDatabase(AUTH_DATABASE);
 
             MongoCollection<Document> users = db.getCollection(USERS);

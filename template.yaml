@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Kuroraijin Authorizer Local Testing
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Runtime: java21
+    Architectures:
+      - x86_64
+
+Resources:
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: kuroraijin-authorizer-local
+      Handler: com.kuroraijin.CoreAuthorizerHandler::handleRequest
+      CodeUri: build/libs/kuroraijin-authorizer-0.1-all.jar
+      Environment:
+        Variables:
+          MONGODB_URI: mongodb+srv://d3v-user:IMQH2ts10Jk1qgF1@cluster-prod-isc.wtumg4a.mongodb.net/kuroraijin_db?retryWrites=true&w=majority
+          AUTH_DATABASE: auth_db
+          ACCOUNT_ID: "590183859840"
+      Events:
+        # This won't be used for authorizer testing, but required by SAM
+        TestInvoke:
+          Type: Api
+          Properties:
+            Path: /test
+            Method: get
+
+Outputs:
+  AuthorizerFunction:
+    Description: "Authorizer Lambda Function ARN"
+    Value: !GetAtt AuthorizerFunction.Arn

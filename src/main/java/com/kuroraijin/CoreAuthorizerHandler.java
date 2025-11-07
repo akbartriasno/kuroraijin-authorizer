@@ -3,22 +3,74 @@ package com.kuroraijin;
 import com.kuroraijin.service.FindUserService;
 import com.kuroraijin.service.JWTService;
 import com.kuroraijin.util.PolicyDocumentUtil;
+import io.micronaut.context.ApplicationContext;
 import io.micronaut.function.aws.MicronautRequestHandler;
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Optional;
 
-@Singleton
 public class CoreAuthorizerHandler extends MicronautRequestHandler<Map<String, Object>, Map<String, Object>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(CoreAuthorizerHandler.class);
 
-    @Inject JWTService jwtService;
-    @Inject FindUserService findUserService;
+    private final JWTService jwtService;
+    private final FindUserService findUserService;
+    private static ApplicationContext applicationContext;
+
+    // Default constructor for Lambda
+    public CoreAuthorizerHandler() {
+        if (applicationContext == null) {
+            synchronized (CoreAuthorizerHandler.class) {
+                if (applicationContext == null) {
+                    LOG.info("Initializing Micronaut ApplicationContext...");
+                    applicationContext = ApplicationContext.run();
+                    LOG.info("ApplicationContext initialized successfully");
+                }
+            }
+        }
+        this.jwtService = applicationContext.getBean(JWTService.class);
+        this.findUserService = applicationContext.getBean(FindUserService.class);
+        LOG.info("CoreAuthorizerHandler initialized with services");
+    }
+
+    // Constructor for testing
+    // public CoreAuthorizerHandler(JWTService jwtService, FindUserService findUserService) {
+    //    this.jwtService = jwtService;
+    //    this.findUserService = findUserService;
+    // }
+
+    private String extractRawAuthorization(Map<String, Object> event) {
+        // HTTP API / REQUEST authorizer: header Authorization/authorization
+        Object headersObj = event.get("headers");
+        if (headersObj instanceof Map<?, ?> headers) {
+            Object auth = headers.get("Authorization");
+            if (auth == null) auth = headers.get("authorization");
+            if (auth instanceof String s && !s.isBlank()) {
+                return s.trim();
+            }
+        }
+
+        // REST API / TOKEN authorizer: authorizationToken
+        Object token = event.get("authorizationToken");
+        if (token instanceof String s && !s.isBlank()) {
+            return s.trim();
+        }
+        return null;
+    }
+
+    private String stripBearer(String value) {
+        String v = Optional.ofNullable(value).orElse("");
+        if (v.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            return v.substring(7).trim();
+        }
+        return v.trim();
+    }
+
+    private static String safeStr(Object o) {
+        try { return String.valueOf(o); } catch (Exception e) { return "<unprintable>"; }
+    }
 
     @Override
     public Map<String, Object> execute(Map<String, Object> event) {
@@ -51,36 +103,5 @@ public class CoreAuthorizerHandler extends MicronautRequestHandler<Map<String, O
             LOG.error("Authorizer error: {}", e.getMessage(), e);
             return PolicyDocumentUtil.generatePolicy("Guest-Exception", "Deny", "*");
         }
-    }
-
-    private String extractRawAuthorization(Map<String, Object> event) {
-        // HTTP API / REQUEST authorizer: header Authorization/authorization
-        Object headersObj = event.get("headers");
-        if (headersObj instanceof Map<?, ?> headers) {
-            Object auth = headers.get("Authorization");
-            if (auth == null) auth = headers.get("authorization");
-            if (auth instanceof String s && !s.isBlank()) {
-                return s.trim();
-            }
-        }
-
-        // REST API / TOKEN authorizer: authorizationToken
-        Object token = event.get("authorizationToken");
-        if (token instanceof String s && !s.isBlank()) {
-            return s.trim();
-        }
-        return null;
-    }
-
-    private String stripBearer(String value) {
-        String v = Optional.ofNullable(value).orElse("");
-        if (v.regionMatches(true, 0, "Bearer ", 0, 7)) {
-            return v.substring(7).trim();
-        }
-        return v.trim();
-    }
-
-    private static String safeStr(Object o) {
-        try { return String.valueOf(o); } catch (Exception e) { return "<unprintable>"; }
     }
 }

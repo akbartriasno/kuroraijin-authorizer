@@ -1,0 +1,31 @@
+{
+  "version": "2.0",
+  "type": "REQUEST",
+  "routeArn": "arn:aws:execute-api:ap-southeast-3:123456789012:abcdef123/dev/GET/hello",
+  "identitySource": ["Bearer"],
+  "routeKey": "GET /hello",
+  "rawPath": "/hello",
+  "rawQueryString": "",
+  "headers": {
+    "Authorization": "Bearer",
+    "content-type": "application/json"
+  },
+  "requestContext": {
+    "accountId": "123456789012",
+    "apiId": "abcdef123",
+    "domainName": "abcdef123.execute-api.ap-southeast-3.amazonaws.com",
+    "domainPrefix": "abcdef123",
+    "http": {
+      "method": "GET",
+      "path": "/hello",
+      "protocol": "HTTP/1.1",
+      "sourceIp": "192.168.1.1",
+      "userAgent": "Custom User Agent String"
+    },
+    "requestId": "test-request-id",
+    "routeKey": "GET /hello",
+    "stage": "dev",
+    "time": "07/Nov/2025:10:00:00 +0000",
+    "timeEpoch": 1730973600000
+  }
+}

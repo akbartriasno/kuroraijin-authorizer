@@ -4,7 +4,6 @@ plugins {
     id("io.micronaut.aot") version "4.5.4"
 }
 
-
 version = "0.1"
 group = "com.kuroraijin"
 
@@ -16,6 +15,7 @@ dependencies {
     // --- Micronaut Core ---
     implementation("io.micronaut:micronaut-runtime")
     implementation("io.micronaut:micronaut-inject")
+    runtimeOnly("io.micronaut:micronaut-http-client")
 
     // --- AWS Lambda Function (Custom Runtime) ---
     implementation("io.micronaut.aws:micronaut-function-aws")
@@ -31,7 +31,7 @@ dependencies {
 
     // === MongoDB ===
     implementation("io.micronaut.mongodb:micronaut-mongo-sync")
-    runtimeOnly("org.mongodb:mongodb-driver-sync:5.1.0")
+    runtimeOnly("org.mongodb:mongodb-driver-sync")
 
     // --- Logging ---
     runtimeOnly("ch.qos.logback:logback-classic")
@@ -44,7 +44,6 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
 }
-
 
 application {
     mainClass = "com.kuroraijin.FunctionLambdaRuntime"
@@ -63,8 +62,6 @@ micronaut {
         annotations("com.kuroraijin.*")
     }
     aot {
-        // Please review carefully the optimizations enabled below
-        // Check https://micronaut-projects.github.io/micronaut-aot/latest/guide/ for more details
         optimizeServiceLoading = true
         convertYamlToJava = false
         precomputeOperations = true
@@ -73,6 +70,24 @@ micronaut {
         deduceEnvironment = true
         optimizeNetty = true
         replaceLogbackXml = true
+    }
+}
+
+// Optimize native image build args
+graalvmNative {
+    binaries {
+        main {
+            buildArgs.add("--initialize-at-build-time=org.slf4j")
+            buildArgs.add("--initialize-at-build-time=ch.qos.logback")
+            buildArgs.add("-H:+ReportExceptionStackTraces")
+            buildArgs.add("-H:+RemoveUnusedSymbols")
+            buildArgs.add("--no-fallback")
+
+            // Memory optimizations for runtime
+            buildArgs.add("-R:MaxHeapSize=512m")
+            buildArgs.add("-R:MinHeapSize=256m")
+            buildArgs.add("-R:MaxNewSize=256m")
+        }
     }
 }
 

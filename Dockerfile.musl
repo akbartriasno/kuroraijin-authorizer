@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1
+
+# Builder: GraalVM native-image + musl (static)
+FROM ghcr.io/graalvm/native-image-community:21-muslib AS build
+WORKDIR /workspace
+
+# 1) Copy fat-jar dari host (pakai wildcard supaya tak peduli nama versi)
+#    Pastikan kamu sudah menjalankan: ./gradlew clean shadowJar
+COPY build/libs/*-all.jar /workspace/app.jar
+
+# (opsional) lihat apa saja yang tercopy
+RUN ls -lah /workspace
+
+# 2) Build native static musl -> output bernama 'bootstrap' di /workspace
+RUN native-image \
+    --no-fallback \
+    --static \
+    --libc=musl \
+    -H:+ReportExceptionStackTraces \
+    -H:+RemoveUnusedSymbols \
+    -H:Name=bootstrap \
+    -H:Path=/workspace \
+    -jar /workspace/app.jar
+
+# 3) Verifikasi file benar-benar ada (kalau tidak, build gagal di sini, bukan saat COPY export)
+RUN ls -lah /workspace && test -x /workspace/app
+
+    # Export stage: keluarkan hanya file app
+FROM scratch AS export
+COPY --from=build /workspace/app /app
