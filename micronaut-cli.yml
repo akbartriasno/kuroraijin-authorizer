@@ -1,0 +1,6 @@
+applicationType: function
+defaultPackage: com.kuroraijin
+testFramework: junit
+sourceLanguage: java
+buildTool: gradle
+features: [app-name, aws-lambda, aws-lambda-custom-runtime, aws-lambda-events-serde, aws-lambda-handler-function, gradle, http-client-jdk, http-client-test, java, junit, logback, micronaut-build, properties, readme, serialization-jackson, shade, snapstart, x86]
